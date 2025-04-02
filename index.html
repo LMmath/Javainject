@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <style>
+        :root {
+            --main-bg: #0a0a0a;
+            --editor-bg: #1a1a1a;
+            --accent: #00ff88;
+            --text: #ffffff;
+            --border: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--main-bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            background: var(--editor-bg);
+            padding: 10px 20px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .datetime, .user-info {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        .launch-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .url-input {
+            width: 80%;
+            max-width: 600px;
+            padding: 12px;
+            background: var(--editor-bg);
+            border: 2px solid var(--border);
+            border-radius: 5px;
+            color: var(--accent);
+            font-family: monospace;
+            outline: none;
+        }
+
+        .url-input:focus {
+            border-color: var(--accent);
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00cc69, #00ff88);
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(45deg, #2a2a2a, #3a3a3a);
+            color: var(--accent);
+        }
+
+        .iframe-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--editor-bg);
+            z-index: 999;
+        }
+
+        .fullscreen-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff3366;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .status-message {
+            color: var(--accent);
+            font-family: monospace;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .loader {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--editor-bg);
+            border-top: 5px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1001;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="datetime" id="datetime"></div>
+        <div class="user-info">Current User's Login: RipAngelhacks</div>
+    </div>
+
+    <div class="launch-container" id="launchContainer">
+        <h2 style="color: var(--accent);">Advanced JavaScript Executor</h2>
+        <input type="text" class="url-input" id="urlInput" 
+               placeholder="Enter URL (optional) - Example: https://example.com" />
+        <div class="buttons-container">
+            <button class="btn" onclick="launchBlank()">Launch in about:blank</button>
+            <button class="btn secondary" onclick="launchExecutor()">Launch Executor Only</button>
+        </div>
+        <div class="status-message" id="status"></div>
+    </div>
+
+    <div class="iframe-container" id="iframeContainer">
+        <button class="close-btn" onclick="closeExecutor()">×</button>
+        <iframe id="executorFrame" class="fullscreen-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <script>
+        let isClosing = false;
+
+        function updateDateTime() {
+            const now = new Date();
+            const formatted = now.toISOString().slice(0, 19).replace('T', ' ');
+            document.getElementById('datetime').textContent = 
+                `Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): ${formatted}`;
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        function launchBlank() {
+            const url = document.getElementById('urlInput').value.trim();
+            const win = window.open('about:blank', '_blank');
+            
+            if (!win) {
+                showStatus('Pop-up blocked! Please allow pop-ups and try again.', 'error');
+                return;
+            }
+
+            const content = `
+                <html>
+                    <title>Google</title>
+                    <head>
+                        <style>
+                            body, html {
+                                margin: 0;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                overflow: hidden;
+                            }
+                            iframe {
+                                width: 100%;
+                                height: 50%;
+                                border: none;
+                            }
+                            #executor-container {
+                                width: 100%;
+                                height: 50%;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${url ? `<iframe src="${url}" style="width:100%; height:50%;"></iframe>` : ''}
+                        <div id="executor-container">
+                            <script src="${window.location.href.replace('index.html', '')}executor.js"><\/script>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            win.document.write(content);
+            win.document.close();
+            showStatus('Launched successfully!', 'success');
+        }
+
+        function launchExecutor() {
+            if (isClosing) return;
+            
+            const loader = document.getElementById('loader');
+            const iframeContainer = document.getElementById('iframeContainer');
+            const launchContainer = document.getElementById('launchContainer');
+            const iframe = document.getElementById('executorFrame');
+
+            loader.style.display = 'block';
+            
+            const executorContent = `
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <title>Google</title>
+                        <style>
+                            body, html {
+                                margin: 0;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                overflow: hidden;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <script src="executor.js"><\/script>
+                    </body>
+                </html>
+            `;
+
+            iframe.srcdoc = executorContent;
+            
+            iframe.onload = () => {
+                loader.style.display = 'none';
+                launchContainer.style.display = 'none';
+                iframeContainer.style.display = 'block';
+                showStatus('Executor loaded successfully!', 'success');
+            };
+        }
+
+        function closeExecutor() {
+            if (isClosing) return;
+            
+            isClosing = true;
+            const iframeContainer = document.getElementById('iframeContainer');
+            const launchContainer = document.getElementById('launchContainer');
+            const iframe = document.getElementById('executorFrame');
+            
+            iframe.srcdoc = '';
+            
+            setTimeout(() => {
+                iframeContainer.style.display = 'none';
+                launchContainer.style.display = 'flex';
+                isClosing = false;
+            }, 100);
+        }
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.style.color = type === 'error' ? '#ff3366' : '#00ff88';
+            status.textContent = message;
+            setTimeout(() => status.textContent = '', 3000);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !isClosing) {
+                closeExecutor();
+            }
+        });
+    </script>
+</body>
+</html>
